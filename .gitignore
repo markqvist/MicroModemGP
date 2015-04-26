@@ -1,0 +1,14 @@
+obj
+*.project
+*.workspace
+*.o
+*.d
+resources
+images/*.bin
+images/*.s19
+images/*.eep
+images/*.lss
+images/*.map
+images/*.elf
+images/*.sym
+images/*.hex
