@@ -137,7 +137,7 @@ uint8_t AFSK_dac_isr(Afsk *afsk) {
                     afsk->preambleLength--;
                     afsk->currentOutputByte = HDLC_FLAG;
                 }
-                if (afsk->currentOutputByte == AX25_ESC) {
+                if (afsk->currentOutputByte == LLP_ESC) {
                     if (fifo_isempty(&afsk->txFifo)) {
                         AFSK_DAC_IRQ_STOP();
                         afsk->sending = false;
@@ -283,11 +283,11 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo) {
         // data.
         if ((hdlc->currentByte == HDLC_FLAG ||
              hdlc->currentByte == HDLC_RESET ||
-             hdlc->currentByte == AX25_ESC)) {
+             hdlc->currentByte == LLP_ESC)) {
             // We also need to check that our received data buffer
             // is not full before putting more data in
             if (!fifo_isfull(fifo)) {
-                fifo_push(fifo, AX25_ESC);
+                fifo_push(fifo, LLP_ESC);
             } else {
                 // If it is, abort and return false
                 hdlc->receiving = false;

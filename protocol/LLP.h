@@ -43,6 +43,7 @@ typedef struct LLPCtx {
 } LLPCtx;
 
 void llp_send(LLPCtx *ctx, LLPAddress *dst, const void *_buf, size_t len);
+void llp_sendRaw(LLPCtx *ctx, const void *_buf, size_t len);
 void llp_poll(LLPCtx *ctx);
 void llp_init(LLPCtx *ctx, LLPAddress *address, FILE *channel, llp_callback_t hook);
 

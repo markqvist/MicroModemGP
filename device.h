@@ -19,16 +19,10 @@
 
 // Serial protocol settings
 #define SERIAL_PROTOCOL PROTOCOL_KISS
-// OR
-//#define SERIAL_PROTOCOL PROTOCOL_SIMPLE_SERIAL
-
-// AX25 settings
-#if SERIAL_PROTOCOL == PROTOCOL_SIMPLE_SERIAL
-    #define CUSTOM_FRAME_SIZE 330
-#endif
+//#define CUSTOM_FRAME_SIZE 330
 
 // Serial settings
-#define BAUD 9600
+#define BAUD 57600
 #define SERIAL_DEBUG false
 #define TX_MAXWAIT 2UL
 

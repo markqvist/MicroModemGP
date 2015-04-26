@@ -17,7 +17,7 @@ unsigned long custom_preamble = CONFIG_AFSK_PREAMBLE_LEN;
 unsigned long custom_tail = CONFIG_AFSK_TRAILER_LEN;
 
 unsigned long slotTime = 200;
-uint8_t p = 63;
+uint8_t p = 255;
 
 void kiss_init(LLPCtx *ctx, Afsk *afsk, Serial *ser) {
     llpCtx = ctx;
@@ -50,7 +50,7 @@ void kiss_csma(LLPCtx *ctx, uint8_t *buf, size_t len) {
         if(!channel->hdlc.receiving) {
             uint8_t tp = rand() & 0xFF;
             if (tp < p) {
-                //ax25_sendRaw(ctx, buf, len);
+                llp_sendRaw(ctx, buf, len);
                 sent = true;
             } else {
                 ticks_t start = timer_clock();
