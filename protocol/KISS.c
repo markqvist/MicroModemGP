@@ -4,8 +4,8 @@
 #include "device.h"
 #include "KISS.h"
 
-static uint8_t serialBuffer[AX25_MAX_FRAME_LEN]; // Buffer for holding incoming serial data
-AX25Ctx *ax25ctx;
+static uint8_t serialBuffer[LLP_MAX_FRAME_LEN]; // Buffer for holding incoming serial data
+LLPCtx *llpCtx;
 Afsk *channel;
 Serial *serial;
 size_t frame_len;
@@ -19,13 +19,13 @@ unsigned long custom_tail = CONFIG_AFSK_TRAILER_LEN;
 unsigned long slotTime = 200;
 uint8_t p = 63;
 
-void kiss_init(AX25Ctx *ax25, Afsk *afsk, Serial *ser) {
-    ax25ctx = ax25;
+void kiss_init(LLPCtx *ctx, Afsk *afsk, Serial *ser) {
+    llpCtx = ctx;
     serial = ser;
     channel = afsk;
 }
 
-void kiss_messageCallback(AX25Ctx *ctx) {
+void kiss_messageCallback(LLPCtx *ctx) {
     fputc(FEND, &serial->uart0);
     fputc(0x00, &serial->uart0);
     for (unsigned i = 0; i < ctx->frame_len-2; i++) {
@@ -43,14 +43,14 @@ void kiss_messageCallback(AX25Ctx *ctx) {
     fputc(FEND, &serial->uart0);
 }
 
-void kiss_csma(AX25Ctx *ctx, uint8_t *buf, size_t len) {
+void kiss_csma(LLPCtx *ctx, uint8_t *buf, size_t len) {
     bool sent = false;
     while (!sent) {
         //puts("Waiting in CSMA");
         if(!channel->hdlc.receiving) {
             uint8_t tp = rand() & 0xFF;
             if (tp < p) {
-                ax25_sendRaw(ctx, buf, len);
+                //ax25_sendRaw(ctx, buf, len);
                 sent = true;
             } else {
                 ticks_t start = timer_clock();
@@ -64,7 +64,7 @@ void kiss_csma(AX25Ctx *ctx, uint8_t *buf, size_t len) {
                 // Continously poll the modem for data
                 // while waiting, so we don't overrun
                 // receive buffers
-                ax25_poll(ax25ctx);
+                llp_poll(llpCtx);
 
                 if (channel->status != 0) {
                     // If an overflow or other error
@@ -83,12 +83,12 @@ void kiss_csma(AX25Ctx *ctx, uint8_t *buf, size_t len) {
 void kiss_serialCallback(uint8_t sbyte) {
     if (IN_FRAME && sbyte == FEND && command == CMD_DATA) {
         IN_FRAME = false;
-        kiss_csma(ax25ctx, serialBuffer, frame_len);
+        kiss_csma(llpCtx, serialBuffer, frame_len);
     } else if (sbyte == FEND) {
         IN_FRAME = true;
         command = CMD_UNKNOWN;
         frame_len = 0;
-    } else if (IN_FRAME && frame_len < AX25_MAX_FRAME_LEN) {
+    } else if (IN_FRAME && frame_len < LLP_MAX_FRAME_LEN) {
         // Have a look at the command byte first
         if (frame_len == 0 && command == CMD_UNKNOWN) {
             // MicroModem supports only one HDLC port, so we

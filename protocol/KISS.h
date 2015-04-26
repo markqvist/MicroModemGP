@@ -4,7 +4,7 @@
 #include "../hardware/AFSK.h"
 #include "../hardware/Serial.h"
 #include "../util/time.h"
-#include "AX25.h"
+#include "LLP.h"
 
 #define FEND 0xC0
 #define FESC 0xDB
@@ -21,9 +21,9 @@
 #define CMD_SETHARDWARE 0x06
 #define CMD_RETURN 0xFF
 
-void kiss_init(AX25Ctx *ax25, Afsk *afsk, Serial *ser);
-void kiss_csma(AX25Ctx *ctx, uint8_t *buf, size_t len);
-void kiss_messageCallback(AX25Ctx *ctx);
+void kiss_init(LLPCtx *ctx, Afsk *afsk, Serial *ser);
+void kiss_csma(LLPCtx *ctx, uint8_t *buf, size_t len);
+void kiss_messageCallback(LLPCtx *ctx);
 void kiss_serialCallback(uint8_t sbyte);
 
 #endif
