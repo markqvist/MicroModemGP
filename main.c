@@ -27,8 +27,8 @@ void init(void) {
     AFSK_init(&modem);
 
     memset(&localAdress, 0, sizeof(localAdress));
-    localAdress.network = 0xF000;
-    localAdress.host    = 0x0001;
+    localAdress.network = LLP_ADDR_BROADCAST;
+    localAdress.host    = LLP_ADDR_BROADCAST;
     llp_init(&llp, &localAdress, &modem.fd, llp_callback);
 
     serial_init(&serial);    

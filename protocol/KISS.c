@@ -4,7 +4,7 @@
 #include "device.h"
 #include "KISS.h"
 
-static uint8_t serialBuffer[LLP_MAX_FRAME_LEN]; // Buffer for holding incoming serial data
+static uint8_t serialBuffer[LLP_MAX_FRAME_LENGTH]; // Buffer for holding incoming serial data
 LLPCtx *llpCtx;
 Afsk *channel;
 Serial *serial;
@@ -26,21 +26,28 @@ void kiss_init(LLPCtx *ctx, Afsk *afsk, Serial *ser) {
 }
 
 void kiss_messageCallback(LLPCtx *ctx) {
-    fputc(FEND, &serial->uart0);
-    fputc(0x00, &serial->uart0);
-    for (unsigned i = 0; i < ctx->frame_len-2; i++) {
-        uint8_t b = ctx->buf[i];
-        if (b == FEND) {
-            fputc(FESC, &serial->uart0);
-            fputc(TFEND, &serial->uart0);
-        } else if (b == FESC) {
-            fputc(FESC, &serial->uart0);
-            fputc(TFESC, &serial->uart0);
-        } else {
+    if (false) {
+        for (unsigned i = 0; i < ctx->frame_len; i++) {
+            uint8_t b = ctx->buf[i];
             fputc(b, &serial->uart0);
         }
+    } else {
+        fputc(FEND, &serial->uart0);
+        fputc(0x00, &serial->uart0);
+        for (unsigned i = 0; i < ctx->frame_len; i++) {
+            uint8_t b = ctx->buf[i];
+            if (b == FEND) {
+                fputc(FESC, &serial->uart0);
+                fputc(TFEND, &serial->uart0);
+            } else if (b == FESC) {
+                fputc(FESC, &serial->uart0);
+                fputc(TFESC, &serial->uart0);
+            } else {
+                fputc(b, &serial->uart0);
+            }
+        }
+        fputc(FEND, &serial->uart0);
     }
-    fputc(FEND, &serial->uart0);
 }
 
 void kiss_csma(LLPCtx *ctx, uint8_t *buf, size_t len) {
@@ -50,7 +57,8 @@ void kiss_csma(LLPCtx *ctx, uint8_t *buf, size_t len) {
         if(!channel->hdlc.receiving) {
             uint8_t tp = rand() & 0xFF;
             if (tp < p) {
-                llp_sendRaw(ctx, buf, len);
+                //llp_sendRaw(ctx, buf, len);
+                llp_broadcast(ctx, buf, len);
                 sent = true;
             } else {
                 ticks_t start = timer_clock();
@@ -88,7 +96,7 @@ void kiss_serialCallback(uint8_t sbyte) {
         IN_FRAME = true;
         command = CMD_UNKNOWN;
         frame_len = 0;
-    } else if (IN_FRAME && frame_len < LLP_MAX_FRAME_LEN) {
+    } else if (IN_FRAME && frame_len < LLP_MAX_FRAME_LENGTH) {
         // Have a look at the command byte first
         if (frame_len == 0 && command == CMD_UNKNOWN) {
             // MicroModem supports only one HDLC port, so we

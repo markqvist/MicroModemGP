@@ -22,7 +22,7 @@
 //#define CUSTOM_FRAME_SIZE 330
 
 // Serial settings
-#define BAUD 57600
+#define BAUD 9600
 #define SERIAL_DEBUG false
 #define TX_MAXWAIT 2UL
 
