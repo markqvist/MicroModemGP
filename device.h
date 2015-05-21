@@ -23,7 +23,7 @@
 // Serial settings
 #define BAUD 9600
 #define SERIAL_DEBUG false
-#define TX_MAXWAIT 2UL
+#define TX_MAXWAIT 5UL
 
 // Port settings
 #if TARGET_CPU == m328p
