@@ -4,7 +4,7 @@
 #include "device.h"
 #include "KISS.h"
 
-static uint8_t serialBuffer[LLP_MAX_FRAME_LENGTH]; // Buffer for holding incoming serial data
+static uint8_t serialBuffer[LLP_MAX_DATA_SIZE]; // Buffer for holding incoming serial data
 LLPCtx *llpCtx;
 Afsk *channel;
 Serial *serial;
@@ -103,7 +103,7 @@ void kiss_serialCallback(uint8_t sbyte) {
         timeout_ticks = timer_clock();
         IN_FRAME = true;
         serialBuffer[frame_len++] = sbyte;
-        if (frame_len >= LLP_MAX_FRAME_LENGTH) kiss_checkTimeout(true);
+        if (frame_len >= LLP_MAX_DATA_SIZE) kiss_checkTimeout(true);
     #else
         if (IN_FRAME && sbyte == FEND && command == CMD_DATA) {
             IN_FRAME = false;
@@ -112,7 +112,7 @@ void kiss_serialCallback(uint8_t sbyte) {
             IN_FRAME = true;
             command = CMD_UNKNOWN;
             frame_len = 0;
-        } else if (IN_FRAME && frame_len < LLP_MAX_FRAME_LENGTH) {
+        } else if (IN_FRAME && frame_len < LLP_MAX_DATA_SIZE) {
             // Have a look at the command byte first
             if (frame_len == 0 && command == CMD_UNKNOWN) {
                 // MicroModem supports only one HDLC port, so we
