@@ -3,6 +3,7 @@
 #include <avr/io.h>
 
 #include "device.h"
+#include "config.h"
 #include "util/FIFO.h"
 #include "util/time.h"
 #include "hardware/AFSK.h"
@@ -48,6 +49,9 @@ int main (void) {
             char sbyte = uart0_getchar_nowait();
             kiss_serialCallback(sbyte);
         }
+        #if SERIAL_FRAMING == SERIAL_FRAMING_DIRECT
+            kiss_checkTimeout(false);
+        #endif
     }
 
     return(0);

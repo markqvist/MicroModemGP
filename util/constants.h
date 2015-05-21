@@ -7,3 +7,6 @@
 
 #define REF_3V3 0x01
 #define REF_5V  0x02
+
+#define SERIAL_FRAMING_KISS 0x01
+#define SERIAL_FRAMING_DIRECT 0x02

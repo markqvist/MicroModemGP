@@ -19,7 +19,6 @@
 
 // Serial protocol settings
 #define SERIAL_PROTOCOL PROTOCOL_KISS
-//#define CUSTOM_FRAME_SIZE 330
 
 // Serial settings
 #define BAUD 9600

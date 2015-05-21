@@ -5,6 +5,7 @@
 #include "../hardware/Serial.h"
 #include "../util/time.h"
 #include "LLP.h"
+#include "config.h"
 
 #define FEND 0xC0
 #define FESC 0xDB
@@ -25,5 +26,6 @@ void kiss_init(LLPCtx *ctx, Afsk *afsk, Serial *ser);
 void kiss_csma(LLPCtx *ctx, uint8_t *buf, size_t len);
 void kiss_messageCallback(LLPCtx *ctx);
 void kiss_serialCallback(uint8_t sbyte);
+void kiss_checkTimeout(bool force);
 
 #endif

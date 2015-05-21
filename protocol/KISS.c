@@ -18,6 +18,7 @@ unsigned long custom_tail = CONFIG_AFSK_TRAILER_LEN;
 
 unsigned long slotTime = 200;
 uint8_t p = 255;
+ticks_t timeout_ticks;
 
 void kiss_init(LLPCtx *ctx, Afsk *afsk, Serial *ser) {
     llpCtx = ctx;
@@ -26,7 +27,7 @@ void kiss_init(LLPCtx *ctx, Afsk *afsk, Serial *ser) {
 }
 
 void kiss_messageCallback(LLPCtx *ctx) {
-    if (false) {
+    if (SERIAL_FRAMING == SERIAL_FRAMING_DIRECT) {
         for (unsigned i = 0; i < ctx->frame_len; i++) {
             uint8_t b = ctx->buf[i];
             fputc(b, &serial->uart0);
@@ -88,41 +89,57 @@ void kiss_csma(LLPCtx *ctx, uint8_t *buf, size_t len) {
     
 }
 
-void kiss_serialCallback(uint8_t sbyte) {
-    if (IN_FRAME && sbyte == FEND && command == CMD_DATA) {
-        IN_FRAME = false;
+void kiss_checkTimeout(bool force) {
+    if (force || (IN_FRAME && timer_clock() - timeout_ticks > ms_to_ticks(TX_MAXWAIT))) {
         kiss_csma(llpCtx, serialBuffer, frame_len);
-    } else if (sbyte == FEND) {
-        IN_FRAME = true;
-        command = CMD_UNKNOWN;
+        IN_FRAME = false;
         frame_len = 0;
-    } else if (IN_FRAME && frame_len < LLP_MAX_FRAME_LENGTH) {
-        // Have a look at the command byte first
-        if (frame_len == 0 && command == CMD_UNKNOWN) {
-            // MicroModem supports only one HDLC port, so we
-            // strip off the port nibble of the command byte
-            sbyte = sbyte & 0x0F;
-            command = sbyte;
-        } else if (command == CMD_DATA) {
-            if (sbyte == FESC) {
-                ESCAPE = true;
-            } else {
-                if (ESCAPE) {
-                    if (sbyte == TFEND) sbyte = FEND;
-                    if (sbyte == TFESC) sbyte = FESC;
-                    ESCAPE = false;
-                }
-                serialBuffer[frame_len++] = sbyte;
-            }
-        } else if (command == CMD_TXDELAY) {
-            custom_preamble = sbyte * 10UL;
-        } else if (command == CMD_TXTAIL) {
-            custom_tail = sbyte * 10;
-        } else if (command == CMD_SLOTTIME) {
-            slotTime = sbyte * 10;
-        } else if (command == CMD_P) {
-            p = sbyte;
-        } 
-        
     }
+    
+}
+
+void kiss_serialCallback(uint8_t sbyte) {
+    #if SERIAL_FRAMING == SERIAL_FRAMING_DIRECT
+        timeout_ticks = timer_clock();
+        IN_FRAME = true;
+        serialBuffer[frame_len++] = sbyte;
+        if (frame_len >= LLP_MAX_FRAME_LENGTH) kiss_checkTimeout(true);
+    #else
+        if (IN_FRAME && sbyte == FEND && command == CMD_DATA) {
+            IN_FRAME = false;
+            kiss_csma(llpCtx, serialBuffer, frame_len);
+        } else if (sbyte == FEND) {
+            IN_FRAME = true;
+            command = CMD_UNKNOWN;
+            frame_len = 0;
+        } else if (IN_FRAME && frame_len < LLP_MAX_FRAME_LENGTH) {
+            // Have a look at the command byte first
+            if (frame_len == 0 && command == CMD_UNKNOWN) {
+                // MicroModem supports only one HDLC port, so we
+                // strip off the port nibble of the command byte
+                sbyte = sbyte & 0x0F;
+                command = sbyte;
+            } else if (command == CMD_DATA) {
+                if (sbyte == FESC) {
+                    ESCAPE = true;
+                } else {
+                    if (ESCAPE) {
+                        if (sbyte == TFEND) sbyte = FEND;
+                        if (sbyte == TFESC) sbyte = FESC;
+                        ESCAPE = false;
+                    }
+                    serialBuffer[frame_len++] = sbyte;
+                }
+            } else if (command == CMD_TXDELAY) {
+                custom_preamble = sbyte * 10UL;
+            } else if (command == CMD_TXTAIL) {
+                custom_tail = sbyte * 10;
+            } else if (command == CMD_SLOTTIME) {
+                slotTime = sbyte * 10;
+            } else if (command == CMD_P) {
+                p = sbyte;
+            } 
+            
+        }
+    #endif
 }
