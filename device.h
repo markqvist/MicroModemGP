@@ -17,7 +17,9 @@
 // Sampling & timer setup
 #define CONFIG_AFSK_DAC_SAMPLERATE 9600
 
-// Serial protocol settings
+// Don't change this! Change it in
+// config.h instead. This is going away
+// soon, and only an intermediary thing.
 #define SERIAL_PROTOCOL PROTOCOL_KISS
 
 // Serial settings
