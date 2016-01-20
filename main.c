@@ -49,7 +49,7 @@ int main (void) {
             char sbyte = uart0_getchar_nowait();
             kiss_serialCallback(sbyte);
         }
-        #if SERIAL_FRAMING == SERIAL_FRAMING_DIRECT
+        #if (SERIAL_FRAMING == SERIAL_FRAMING_DIRECT) || (SERIAL_FRAMING == SERIAL_FRAMING_NMEA)
             kiss_checkTimeout(false);
         #endif
     }

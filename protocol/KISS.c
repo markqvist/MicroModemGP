@@ -20,6 +20,8 @@ unsigned long slotTime = 200;
 uint8_t p = 255;
 ticks_t timeout_ticks;
 
+int skip_sentences = 0;
+
 void kiss_init(LLPCtx *ctx, Afsk *afsk, Serial *ser) {
     llpCtx = ctx;
     serial = ser;
@@ -27,7 +29,7 @@ void kiss_init(LLPCtx *ctx, Afsk *afsk, Serial *ser) {
 }
 
 void kiss_messageCallback(LLPCtx *ctx) {
-    if (SERIAL_FRAMING == SERIAL_FRAMING_DIRECT) {
+    if (SERIAL_FRAMING == SERIAL_FRAMING_DIRECT || SERIAL_FRAMING == SERIAL_FRAMING_NMEA) {
         for (unsigned i = 0; i < ctx->frame_len; i++) {
             uint8_t b = ctx->buf[i];
             fputc(b, &serial->uart0);
@@ -104,6 +106,48 @@ void kiss_serialCallback(uint8_t sbyte) {
         IN_FRAME = true;
         serialBuffer[frame_len++] = sbyte;
         if (frame_len >= LLP_MAX_DATA_SIZE) kiss_checkTimeout(true);
+    #elif SERIAL_FRAMING == SERIAL_FRAMING_NMEA
+        timeout_ticks = timer_clock();
+        bool NMEA_ok = true;
+        if (!IN_FRAME) {
+            // This is the start of a frame, so
+            // we init filter data ($GPRMC)
+            strncpy((char*)serialBuffer, "$GPRMC", 6);
+        }
+        
+        serialBuffer[frame_len++] = sbyte;
+
+        if (serialBuffer[0] != '$') NMEA_ok = false;
+        if (serialBuffer[1] != 'G') NMEA_ok = false;
+        if (serialBuffer[2] != 'P') NMEA_ok = false;
+        if (serialBuffer[3] != 'R') NMEA_ok = false;
+        if (serialBuffer[4] != 'M') NMEA_ok = false;
+        if (serialBuffer[5] != 'C') NMEA_ok = false;
+
+        if (NMEA_ok) {
+            // Continue
+            IN_FRAME = true;
+        } else {
+            // Reset
+            IN_FRAME = false;
+            frame_len = 0;
+        }
+
+        if (frame_len > 6 && serialBuffer[frame_len-3] == '*') {
+            if (skip_sentences >= NMEA_SKIP_SENTENCES) {
+                serialBuffer[frame_len++] = '\n';
+                serialBuffer[frame_len++] = '\r';
+                kiss_checkTimeout(true);
+                skip_sentences = 0;
+            } else {
+                skip_sentences++;
+                IN_FRAME = false;
+                frame_len = 0;
+            }
+        }
+
+        if (frame_len >= LLP_MAX_DATA_SIZE) kiss_checkTimeout(true);
+
     #else
         if (IN_FRAME && sbyte == FEND && command == CMD_DATA) {
             IN_FRAME = false;
