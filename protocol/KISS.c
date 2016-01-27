@@ -112,7 +112,7 @@ void kiss_serialCallback(uint8_t sbyte) {
         if (!IN_FRAME) {
             // This is the start of a frame, so
             // we init filter data ($GPRMC)
-            strncpy((char*)serialBuffer, "$GPRMC", 6);
+            strncpy((char*)serialBuffer, "$GPGGA", 6);
         }
         
         serialBuffer[frame_len++] = sbyte;
@@ -120,9 +120,9 @@ void kiss_serialCallback(uint8_t sbyte) {
         if (serialBuffer[0] != '$') NMEA_ok = false;
         if (serialBuffer[1] != 'G') NMEA_ok = false;
         if (serialBuffer[2] != 'P') NMEA_ok = false;
-        if (serialBuffer[3] != 'R') NMEA_ok = false;
-        if (serialBuffer[4] != 'M') NMEA_ok = false;
-        if (serialBuffer[5] != 'C') NMEA_ok = false;
+        if (serialBuffer[3] != 'G') NMEA_ok = false;
+        if (serialBuffer[4] != 'G') NMEA_ok = false;
+        if (serialBuffer[5] != 'A') NMEA_ok = false;
 
         if (NMEA_ok) {
             // Continue
