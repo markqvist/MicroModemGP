@@ -42,7 +42,7 @@ inline static uint8_t sinSample(uint16_t i) {
 #define CONFIG_AFSK_RX_BUFLEN 64
 #define CONFIG_AFSK_TX_BUFLEN 64   
 #define CONFIG_AFSK_RXTIMEOUT 0
-#define CONFIG_AFSK_PREAMBLE_LEN 150UL
+#define CONFIG_AFSK_PREAMBLE_LEN 350UL
 #define CONFIG_AFSK_TRAILER_LEN 25UL
 #define BIT_STUFF_LEN 5
 
@@ -52,11 +52,16 @@ inline static uint8_t sinSample(uint16_t i) {
 #define SAMPLESPERBIT (SAMPLERATE / BITRATE)
 #define PHASE_INC    1                              // Nudge by an eigth of a sample each adjustment
 
-#if BITRATE == 960
+#if BITRATE == 300
+    #define FILTER_CUTOFF 600
+    #define MARK_FREQ  1600
+    #define SPACE_FREQ 1800
+    #define PHASE_BITS   10                         // How much to increment phase counter each sample
+#elif BITRATE == 960
     #define FILTER_CUTOFF 600
     #define MARK_FREQ  960
     #define SPACE_FREQ 1600
-    #define PHASE_BITS   10                         // How much to increment phase counter each sample
+    #define PHASE_BITS   10
 #elif BITRATE == 1200
     #define FILTER_CUTOFF 600
     #define MARK_FREQ  1200

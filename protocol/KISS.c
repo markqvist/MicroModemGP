@@ -27,12 +27,12 @@ void kiss_init(LLPCtx *ctx, Afsk *afsk, Serial *ser) {
 }
 
 void kiss_messageCallback(LLPCtx *ctx) {
-    if (SERIAL_FRAMING == SERIAL_FRAMING_DIRECT) {
+    #if (SERIAL_FRAMING == SERIAL_FRAMING_DIRECT)
         for (unsigned i = 0; i < ctx->frame_len; i++) {
             uint8_t b = ctx->buf[i];
             fputc(b, &serial->uart0);
         }
-    } else {
+    #else
         fputc(FEND, &serial->uart0);
         fputc(0x00, &serial->uart0);
         for (unsigned i = 0; i < ctx->frame_len; i++) {
@@ -48,7 +48,7 @@ void kiss_messageCallback(LLPCtx *ctx) {
             }
         }
         fputc(FEND, &serial->uart0);
-    }
+    #endif
 }
 
 void kiss_csma(LLPCtx *ctx, uint8_t *buf, size_t len) {
