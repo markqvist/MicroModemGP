@@ -12,3 +12,4 @@ images/*.map
 images/*.elf
 images/*.sym
 images/*.hex
+flashdefault
