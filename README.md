@@ -16,7 +16,7 @@ You can buy a complete modem from [my shop](http://unsigned.io/shop), or you can
 - Supports KISS mode for use with programs on a host computer
 - 12,8 Hamming-code forward error correction and 12-byte interleaving
 - CRC checksum on packets ensure data integrity
-- Supports packets with up to 792 bytes of data
+- Supports packets with up to 564 bytes of data
 
 ## Serial connection settings
 
@@ -28,9 +28,9 @@ You can configure whether to use KISS serial framing or direct serial framing in
 
 When the modem is running in KISS mode, there's really not much more to it than connecting the modem to a computer, opening whatever program you want to use with it, and off you go.
 
-You can also configure the modem for direct serial framing. If using direct serial framing, the firmware uses time-sensitive input, which means that it will buffer serial data as it comes in, and when it has received no data for a few milliseconds, it will start sending whatever it has received.
+You can also configure the modem in direct serial framing mode. If using direct serial framing, the firmware uses time-sensitive input, which means that it will buffer serial data as it comes in, and when it has received no data for a few milliseconds, it will start sending whatever it has received.
 
-If you're manually typing things to the modem from a terminal, you should therefore set your serial terminal program to not send data for every keystroke, but only on new-line, or pressing send or whatever. You can also compile the firmware for KISS mode serial connection, if you have a host program using KISS.
+If you're manually typing things to the modem from a terminal, you should therefore set your serial terminal program to not send data for every keystroke, but only on new-line, or pressing send or whatever. You can also compile the firmware for KISS mode serial connection, if you have a host program using KISS. If you are using MicroModemGP with [Reticulum](https://github.com/markqvist/Reticulum), use KISS.
 
 ## Other notes
 
