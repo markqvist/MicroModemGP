@@ -11,8 +11,8 @@ bool hw_5v_ref = false;
 Afsk *AFSK_modem;
 
 // Forward declerations
-int afsk_getchar(void);
-void afsk_putchar(char c);
+int afsk_getchar(FILE *strem);
+int afsk_putchar(char c, FILE *stream);
 
 void AFSK_hw_refDetect(void) {
     // This is manual for now
@@ -61,6 +61,8 @@ void AFSK_init(Afsk *afsk) {
     AFSK_modem = afsk;
     // Set phase increment
     afsk->phaseInc = MARK_INC;
+    afsk->silentSamples = 0;
+
     // Initialise FIFO buffers
     fifo_init(&afsk->delayFifo, (uint8_t *)afsk->delayBuf, sizeof(afsk->delayBuf));
     fifo_init(&afsk->rxFifo, afsk->rxBuf, sizeof(afsk->rxBuf));
@@ -84,6 +86,7 @@ static void AFSK_txStart(Afsk *afsk) {
         afsk->phaseAcc = 0;
         afsk->bitstuffCount = 0;
         afsk->sending = true;
+        afsk->sending_data = true;
         LED_TX_ON();
         afsk->preambleLength = DIV_ROUND(custom_preamble * BITRATE, 8000);
         AFSK_DAC_IRQ_START();
@@ -93,13 +96,14 @@ static void AFSK_txStart(Afsk *afsk) {
     }
 }
 
-void afsk_putchar(char c) {
+int afsk_putchar(char c, FILE *stream) {
     AFSK_txStart(AFSK_modem);
     while(fifo_isfull_locked(&AFSK_modem->txFifo)) { /* Wait */ }
     fifo_push_locked(&AFSK_modem->txFifo, c);
+    return 1;
 }
 
-int afsk_getchar(void) {
+int afsk_getchar(FILE *stream) {
     if (fifo_isempty_locked(&AFSK_modem->rxFifo)) {
         return EOF;
     } else {
@@ -111,7 +115,7 @@ void AFSK_transmit(char *buffer, size_t size) {
     fifo_flush(&AFSK_modem->txFifo);
     int i = 0;
     while (size--) {
-        afsk_putchar(buffer[i++]);
+        afsk_putchar(buffer[i++], NULL);
     }
 }
 
@@ -121,6 +125,7 @@ uint8_t AFSK_dac_isr(Afsk *afsk) {
             if (fifo_isempty(&afsk->txFifo) && afsk->tailLength == 0) {
                 AFSK_DAC_IRQ_STOP();
                 afsk->sending = false;
+                afsk->sending_data = false;
                 LED_TX_OFF();
                 return 0;
             } else {
@@ -128,6 +133,7 @@ uint8_t AFSK_dac_isr(Afsk *afsk) {
                 afsk->bitStuff = true;
                 if (afsk->preambleLength == 0) {
                     if (fifo_isempty(&afsk->txFifo)) {
+                        afsk->sending_data = false;
                         afsk->tailLength--;
                         afsk->currentOutputByte = HDLC_FLAG;
                     } else {
@@ -201,6 +207,14 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo) {
             // on the RX LED.
             fifo_push(fifo, HDLC_FLAG);
             hdlc->receiving = true;
+
+            if (hdlc->dcd_count < DCD_MIN_COUNT) {
+                hdlc->dcd = false;
+                hdlc->dcd_count++;
+            } else {
+                hdlc->dcd = true;
+            }
+
             #if OPEN_SQUELCH == false
                 LED_RX_ON();
             #endif
@@ -211,7 +225,8 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo) {
             
             ret = false;
             hdlc->receiving = false;
-            LED_RX_OFF();
+            hdlc->dcd = false;
+            hdlc->dcd_count = 0;
         }
 
         // Everytime we receive a HDLC_FLAG, we reset the
@@ -227,7 +242,7 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo) {
     // Check if we have received a RESET flag (01111111)
     // In this comparison we also detect when no transmission
     // (or silence) is taking place, and the demodulator
-    // returns an endless stream of zeroes. Due to the NRZ
+    // returns an endless stream of zeroes. Due to the NRZ-S
     // coding, the actual bits send to this function will
     // be an endless stream of ones, which this AND operation
     // will also detect.
@@ -235,15 +250,27 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo) {
         // If we have, something probably went wrong at the
         // transmitting end, and we abort the reception.
         hdlc->receiving = false;
-        LED_RX_OFF();
+        hdlc->dcd = false;
+        hdlc->dcd_count = 0;
         return ret;
+    }
+
+    // Check the DCD status and set RX LED appropriately
+    if (hdlc->dcd) {
+        LED_RX_ON();
+    } else {
+        LED_RX_OFF();
     }
 
     // If we have not yet seen a HDLC_FLAG indicating that
     // a transmission is actually taking place, don't bother
     // with anything.
-    if (!hdlc->receiving)
+    if (!hdlc->receiving) {
+        hdlc->dcd = false;
+        hdlc->dcd_count = 0;
+
         return ret;
+    }
 
     // First check if what we are seeing is a stuffed bit.
     // Since the different HDLC control characters like
@@ -291,6 +318,8 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo) {
             } else {
                 // If it is, abort and return false
                 hdlc->receiving = false;
+                hdlc->dcd = false;
+                hdlc->dcd_count = 0;
                 LED_RX_OFF();
                 ret = false;
             }
@@ -303,6 +332,8 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo) {
         } else {
             // If it is, well, you know by now!
             hdlc->receiving = false;
+            hdlc->dcd = false;
+            hdlc->dcd_count = 0;
             LED_RX_OFF();
             ret = false;
         }
@@ -317,7 +348,6 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo) {
         hdlc->currentByte >>= 1;
     }
 
-    //digitalWrite(13, LOW);
     return ret;
 }
 
@@ -364,11 +394,11 @@ void AFSK_adc_isr(Afsk *afsk, int8_t currentSample) {
         // afsk->iirY[1] = afsk->iirX[0] + afsk->iirX[1] + (afsk->iirY[0] * 0.3101172565);
     #elif FILTER_CUTOFF == 1200
         afsk->iirY[1] = afsk->iirX[0] + afsk->iirX[1] + (afsk->iirY[0] / 10);
-        // The above is a simplification of a first-order 800Hz chebyshev filter:
+        // The above is a simplification of a first-order 1200Hz chebyshev filter:
         // afsk->iirY[1] = afsk->iirX[0] + afsk->iirX[1] + (afsk->iirY[0] * 0.1025215106);
     #elif FILTER_CUTOFF == 1600
         afsk->iirY[1] = afsk->iirX[0] + afsk->iirX[1] + -1*(afsk->iirY[0] / 17);
-        // The above is a simplification of a first-order 800Hz chebyshev filter:
+        // The above is a simplification of a first-order 1600Hz chebyshev filter:
         // afsk->iirY[1] = afsk->iirX[0] + afsk->iirX[1] + (afsk->iirY[0] * -0.0630669239);
     #else
         #error Unsupported filter cutoff!
@@ -379,7 +409,7 @@ void AFSK_adc_isr(Afsk *afsk, int8_t currentSample) {
     // First we bitshift everything 1 left
     afsk->sampledBits <<= 1;
     // And then add the sampled bit to our delay line
-    afsk->sampledBits |= (afsk->iirY[1] > 0) ? 1 : 0;
+    afsk->sampledBits |= (afsk->iirY[1] > 0) ? 0 : 1;
 
     // Put the current raw sample in the delay FIFO
     fifo_push(&afsk->delayFifo, currentSample);
@@ -423,6 +453,9 @@ void AFSK_adc_isr(Afsk *afsk, int8_t currentSample) {
         } else {
             afsk->currentPhase -= PHASE_INC;
         }
+        afsk->silentSamples = 0;
+    } else {
+        afsk->silentSamples++;
     }
 
     // We increment our phase counter
@@ -464,7 +497,7 @@ void AFSK_adc_isr(Afsk *afsk, int8_t currentSample) {
         /////////////////////////////////////////////////
 
         // Now we can pass the actual bit to the HDLC parser.
-        // We are using NRZ coding, so if 2 consecutive bits
+        // We are using NRZ-S coding, so if 2 consecutive bits
         // have the same value, we have a 1, otherwise a 0.
         // We use the TRANSITION_FOUND function to determine this.
         //
@@ -476,7 +509,7 @@ void AFSK_adc_isr(Afsk *afsk, int8_t currentSample) {
         // not be able to synchronize our phase to the transmitter
         // and would start experiencing "bit slip".
         //
-        // By combining bit-stuffing with NRZ coding, we ensure
+        // By combining bit-stuffing with NRZ-S coding, we ensure
         // that the signal will regularly make transitions
         // that we can use to synchronize our phase.
         //
@@ -490,6 +523,12 @@ void AFSK_adc_isr(Afsk *afsk, int8_t currentSample) {
                 afsk->status = 0;
             }
         }
+    }
+
+    if (afsk->silentSamples > DCD_TIMEOUT_SAMPLES) {
+        afsk->silentSamples = 0;
+        afsk->hdlc.dcd = false;
+        LED_RX_OFF();
     }
 
 }

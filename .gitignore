@@ -13,3 +13,4 @@ images/*.elf
 images/*.sym
 images/*.hex
 flashdefault
+flashcurrent

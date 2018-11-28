@@ -43,7 +43,7 @@ inline static uint8_t sinSample(uint16_t i) {
 #define CONFIG_AFSK_TX_BUFLEN 64   
 #define CONFIG_AFSK_RXTIMEOUT 0
 #define CONFIG_AFSK_PREAMBLE_LEN 350UL
-#define CONFIG_AFSK_TRAILER_LEN 25UL
+#define CONFIG_AFSK_TRAILER_LEN 50UL
 #define BIT_STUFF_LEN 5
 
 #define SAMPLERATE 9600
@@ -52,6 +52,9 @@ inline static uint8_t sinSample(uint16_t i) {
 #define SAMPLESPERBIT (SAMPLERATE / BITRATE)
 #define PHASE_INC    1                              // Nudge by an eigth of a sample each adjustment
 
+#define DCD_MIN_COUNT 6
+#define DCD_TIMEOUT_SAMPLES 96
+                       
 #if BITRATE == 960
     #define FILTER_CUTOFF 600
     #define MARK_FREQ  960
@@ -80,6 +83,8 @@ typedef struct Hdlc
     uint8_t bitIndex;
     uint8_t currentByte;
     bool receiving;
+    bool dcd;
+    uint8_t dcd_count;
 } Hdlc;
 
 typedef struct Afsk
@@ -103,10 +108,13 @@ typedef struct Afsk
     uint16_t phaseAcc;                      // Phase accumulator
     uint16_t phaseInc;                      // Phase increment per sample
 
+    uint8_t silentSamples;                 // How many samples were completely silent
+
     FIFOBuffer txFifo;                      // FIFO for transmit data
-    uint8_t txBuf[CONFIG_AFSK_TX_BUFLEN];   // Actial data storage for said FIFO
+    uint8_t txBuf[CONFIG_AFSK_TX_BUFLEN];   // Actual data storage for said FIFO
 
     volatile bool sending;                  // Set when modem is sending
+    volatile bool sending_data;             // Set when modem is sending data
 
     // Demodulation values
     FIFOBuffer delayFifo;                   // Delayed FIFO for frequency discrimination
