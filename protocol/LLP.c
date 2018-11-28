@@ -301,6 +301,7 @@ void llp_broadcast(LLPCtx *ctx, const void *_buf, size_t len) {
 }
 
 void llp_send(LLPCtx *ctx, LLPAddress *dst, const void *_buf, size_t len) {
+    ctx->ready_for_data = false;
     ctx->interleaveCounter = 0;
     ctx->crc_out = CRC_CCIT_INIT_VAL;
     uint8_t *buffer = (uint8_t*)_buf;
@@ -349,9 +350,11 @@ void llp_send(LLPCtx *ctx, LLPAddress *dst, const void *_buf, size_t len) {
     // And transmit a HDLC_FLAG to signify
     // end of the transmission.
     fputc(HDLC_FLAG, ctx->ch);
+    ctx->ready_for_data = true;
 }
 
 void llp_sendRaw(LLPCtx *ctx, const void *_buf, size_t len) {
+    ctx->ready_for_data = false;
     ctx->crc_out = CRC_CCIT_INIT_VAL;
     fputc(HDLC_FLAG, ctx->ch);
     const uint8_t *buf = (const uint8_t *)_buf;
@@ -363,6 +366,8 @@ void llp_sendRaw(LLPCtx *ctx, const void *_buf, size_t len) {
     llp_putchar(ctx, crch);
 
     fputc(HDLC_FLAG, ctx->ch);
+
+    ctx->ready_for_data = true;
 }
 
 void llp_init(LLPCtx *ctx, LLPAddress *address, FILE *channel, llp_callback_t hook) {
@@ -371,6 +376,7 @@ void llp_init(LLPCtx *ctx, LLPAddress *address, FILE *channel, llp_callback_t ho
     ctx->hook = hook;
     ctx->address = address;
     ctx->crc_in = ctx->crc_out = CRC_CCIT_INIT_VAL;
+    ctx->ready_for_data = true;
 
     memset(&broadcast_address, 0, sizeof(broadcast_address));
     broadcast_address.network = LLP_ADDR_BROADCAST;

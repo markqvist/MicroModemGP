@@ -53,6 +53,7 @@ typedef struct LLPCtx {
     llp_callback_t hook;
     bool sync;
     bool escape;
+    bool ready_for_data;
     uint8_t interleaveCounter;                      // Keeps track of when we have received an entire interleaved block
     uint8_t interleaveOut[LLP_INTERLEAVE_SIZE];     // A buffer for interleaving bytes before they are sent
     uint8_t interleaveIn[LLP_INTERLEAVE_SIZE];      // A buffer for storing interleaved bytes before they are deinterleaved

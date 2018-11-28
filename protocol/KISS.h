@@ -20,6 +20,7 @@
 #define CMD_TXTAIL 0x04
 #define CMD_FULLDUPLEX 0x05
 #define CMD_SETHARDWARE 0x06
+#define CMD_READY 0x0F
 #define CMD_RETURN 0xFF
 
 void kiss_init(LLPCtx *ctx, Afsk *afsk, Serial *ser);
